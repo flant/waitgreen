@@ -24,7 +24,7 @@ jobs:
         for GOOS in linux; do
           for GOARCH in amd64 arm64; do
             export GOOS GOARCH
-            CGO_ENABLED=0 go build -v -a -tags netgo -ldflags="-extldflags '-static' -s -w $versionflags" -o build/osctl-${GOOS}-${GOARCH} cmd/main.go
+            CGO_ENABLED=0 go build -v -a -tags netgo -ldflags="-extldflags '-static' -s -w $versionflags" -o build/wg-${GOOS}-${GOARCH} cmd/main.go
           done
         done
         cd build; sha256sum * > sha256sums.txt
