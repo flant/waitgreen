@@ -1,0 +1,81 @@
+package wg
+
+import (
+	"encoding/json"
+
+	"log"
+	"net/http"
+
+	"waitgreen/modules/config"
+
+	"github.com/uzhinskiy/lib.go/helpers"
+)
+
+type WaitGreen struct {
+	conf config.Config
+}
+
+type apiRequest struct {
+	WaitGreen bool `json:"waitgreen"`
+}
+
+var wgEnabled bool
+
+func Run(cnf config.Config) {
+	wg := WaitGreen{}
+	wg.conf = cnf
+
+	wgEnabled = cnf.App.DefaultWG
+
+	http.HandleFunc("/", wg.ApiHandler)
+	http.ListenAndServe(cnf.App.Bind+":"+cnf.App.Port, nil)
+}
+
+func (wg *WaitGreen) ApiHandler(w http.ResponseWriter, r *http.Request) {
+	var request apiRequest
+
+	defer r.Body.Close()
+	remoteIP := helpers.GetIP(r.RemoteAddr, r.Header.Get("X-Real-IP"), r.Header.Get("X-Forwarded-For"))
+
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Header().Add("Access-Control-Allow-Methods", "POST,OPTIONS,GET")
+	w.Header().Add("Access-Control-Allow-Credentials", "true")
+	w.Header().Add("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	w.Header().Add("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("X-Server", "wg")
+
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPost:
+		{
+			err := json.NewDecoder(r.Body).Decode(&request)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				log.Println(remoteIP, "\t", r.Method, "\t", r.URL.Path, "\t", http.StatusInternalServerError, "\t", err.Error())
+				return
+			}
+
+			wgEnabled = request.WaitGreen
+			resp := map[string]interface{}{
+				"status": "Ok",
+			}
+			j, _ := json.Marshal(resp)
+			log.Println(remoteIP, "\t", r.Method, "\t", r.URL.Path, "\t", "200", "\t", r.UserAgent())
+			w.Write(j)
+
+		}
+	case http.MethodGet:
+		{
+			resp := map[string]interface{}{
+				"waitgreen": wgEnabled,
+			}
+			j, _ := json.Marshal(resp)
+			log.Println(remoteIP, "\t", r.Method, "\t", r.URL.Path, "\t", "200", "\t", r.UserAgent())
+			w.Write(j)
+		}
+	}
+
+}
