@@ -2,10 +2,9 @@ package wg
 
 import (
 	"encoding/json"
-
 	"log"
 	"net/http"
-
+	"time"
 	"waitgreen/modules/config"
 
 	"github.com/uzhinskiy/lib.go/helpers"
@@ -20,12 +19,16 @@ type apiRequest struct {
 }
 
 var wgEnabled bool
+var wgSetTime = time.Now()
+
+var resetTime = 3 * time.Hour
 
 func Run(cnf config.Config) {
 	wg := WaitGreen{}
 	wg.conf = cnf
 
 	wgEnabled = cnf.App.DefaultWG
+	go cleanup()
 
 	http.HandleFunc("/", wg.ApiHandler)
 	http.ListenAndServe(cnf.App.Bind+":"+cnf.App.Port, nil)
@@ -63,6 +66,7 @@ func (wg *WaitGreen) ApiHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			wgEnabled = request.WaitGreen
+			wgSetTime = time.Now()
 
 			resp := map[string]interface{}{
 				"status": http.StatusOK,
@@ -94,4 +98,19 @@ func httpJsonError(w http.ResponseWriter, errorText string, errorCode int) {
 	}
 	j, _ := json.Marshal(resp)
 	w.Write(j)
+}
+
+func cleanup() {
+	for {
+		now := time.Now()
+		if !wgEnabled {
+			if diff := now.Sub(wgSetTime); diff > cutoff {
+				log.Printf("Set wgEnabled to true at %s", diff)
+				wgEnabled = true
+				wgSetTime = time.Now()
+			}
+		}
+		// do some job
+		time.Sleep(30 * time.Second)
+	}
 }
