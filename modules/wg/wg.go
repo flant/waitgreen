@@ -51,16 +51,21 @@ func (wg *WaitGreen) ApiHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		{
-			err := json.NewDecoder(r.Body).Decode(&request)
+
+			dec := json.NewDecoder(r.Body)
+			dec.DisallowUnknownFields()
+
+			err := dec.Decode(&request)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				log.Println(remoteIP, "\t", r.Method, "\t", r.URL.Path, "\t", http.StatusInternalServerError, "\t", err.Error())
+				httpJsonError(w, err.Error(), http.StatusInternalServerError)
+				log.Println(remoteIP, "\t", r.Method, "\t", r.URL.Path, "\t", http.StatusInternalServerError, "\t", err.Error(), "\t", r.UserAgent())
 				return
 			}
 
 			wgEnabled = request.WaitGreen
+
 			resp := map[string]interface{}{
-				"status": "Ok",
+				"status": http.StatusOK,
 			}
 			j, _ := json.Marshal(resp)
 			log.Println(remoteIP, "\t", r.Method, "\t", r.URL.Path, "\t", "200", "\t", r.UserAgent())
@@ -78,4 +83,15 @@ func (wg *WaitGreen) ApiHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+}
+
+func httpJsonError(w http.ResponseWriter, errorText string, errorCode int) {
+	w.Header().Set("X-Server", "wg")
+	w.WriteHeader(errorCode)
+	resp := map[string]interface{}{
+		"status": errorCode,
+		"error":  errorText,
+	}
+	j, _ := json.Marshal(resp)
+	w.Write(j)
 }
