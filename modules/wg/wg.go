@@ -104,7 +104,7 @@ func cleanup() {
 	for {
 		now := time.Now()
 		if !wgEnabled {
-			if diff := now.Sub(wgSetTime); diff > cutoff {
+			if diff := now.Sub(wgSetTime); diff > resetTime {
 				log.Printf("Set wgEnabled to true at %s", diff)
 				wgEnabled = true
 				wgSetTime = time.Now()
