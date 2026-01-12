@@ -10,7 +10,7 @@ import (
 
 var (
 	configfile string
-	vBuild     string
+	appVersion string
 	cnf        config.Config
 )
 
@@ -21,7 +21,7 @@ func init() {
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	log.Println("Bootstrap: build num.", vBuild)
+	log.Println("Bootstrap: build num.", appVersion)
 
 	cnf = config.Parse(configfile)
 	log.Println("Bootstrap: successful parsing config file.")
